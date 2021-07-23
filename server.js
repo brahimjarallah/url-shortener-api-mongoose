@@ -22,7 +22,7 @@ app.get("/api/hello", function (req, res) {
 })
 const links = []
 let id = 0
-app.post("/api/shorturl/new", (req, res) => {
+app.post("/api/shorturl", (req, res) => {
   const { url } = req.body
   const noHTTPSurl = url.replace(/^https?:\/\//, "")
   dns.lookup(noHTTPSurl, (err) => {
