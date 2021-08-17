@@ -5,7 +5,7 @@ const app = express()
 const dns = require("dns")
 const bodyParser = require("body-parser")
 // Basic Configuration
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 5000
 
 app.use(cors())
 
