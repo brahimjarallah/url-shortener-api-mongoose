@@ -1,63 +1,76 @@
 require("dotenv").config()
 const express = require("express")
-const cors = require("cors")
-const app = express()
-const dns = require("dns")
 const bodyParser = require("body-parser")
-// Basic Configuration
-const port = process.env.PORT || 5000
+const mongoose = require("mongoose")
+const cors = require("cors")
+const dns = require("dns")
+const urlparser = require("url")
+const { isRegExp } = require("util")
+const app = express()
 
-app.use(cors())
+const port = process.env.PORT || 3000
+mongoose.connect(process.env.DB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+
+const schema = new mongoose.Schema({ url: "string" })
+const Url = mongoose.model("Url", schema)
 
 app.use(bodyParser.urlencoded({ extended: false }))
+app.use(cors())
+
 app.use("/public", express.static(`${process.cwd()}/public`))
 
-app.get("/", function (req, res) {
+app.get("/", (req, res) => {
   res.sendFile(process.cwd() + "/views/index.html")
 })
 
-// Your first API endpoint
-app.get("/api/hello", function (req, res) {
-  res.json({ greeting: "hello API" })
-})
-const links = []
-let id = 0
+// app.post("/api/shorturl", async (req, res) => {
+//   const bodyurl = req.body.url  dns.lookup(bodyurl, (data) => {
+//     console.log("dns =====>>>>> ", data)
+//   })
+//
+//   const url = new Url({ url: req.body.url })
+//   await url.save((err, data) => {
+//     res.json({ created: true })
+//   })
+// })
+
 app.post("/api/shorturl", (req, res) => {
-  const { url } = req.body
-  const noHTTPSurl = url.replace(/^https?:\/\//, "")
-  dns.lookup(noHTTPSurl, (err) => {
-    if (err) {
-      return res.json({
-        error: "Invalid URL",
-      })
-    } else {
-      id++
-      const link = {
-        original_url: url,
-        short_url: `${id}`,
+  const bodyurl = req.body.url
+  const something = dns.lookup(
+    urlparser.parse(bodyurl).hostname,
+    (error, address) => {
+      if (!address) {
+        res.json({ error: "Invalid URL" })
+      } else {
+        const url = new Url({ url: bodyurl })
+        url.save((err, data) => {
+          res.json({
+            original_url: data.url,
+            short_url: data.id,
+          })
+        })
       }
-      links.push(link)
-      console.log(links)
-      return res.json(link)
+      console.log("dns", error)
+      console.log("address", address)
+    }
+  )
+  console.log("something", something)
+})
+
+app.get("/api/shorturl/:id", (req, res) => {
+  const id = req.params.id
+  Url.findById(id, (err, data) => {
+    if (!data) {
+      res.json({ error: "Invalid URL" })
+    } else {
+      res.redirect(data.url)
     }
   })
 })
 
-app.get("/api/shorturl/:id", (req, res) => {
-  const { id } = req.params
-  console.log(id, "<===== id query")
-  const link = links.find((l) => l.short_url === id)
-  console.log(link, "<===== link found")
-
-  if (link) {
-    return res.redirect(link.original_url)
-  } else {
-    return res.json({
-      error: "No short url",
-    })
-  }
-})
-
-app.listen(port, function () {
-  console.log(`Listening on port ${port}`)
+app.listen(port, () => {
+  console.log(`Listening on port ${port} ...`)
 })
